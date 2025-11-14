@@ -1,0 +1,12 @@
+name: Release Tagging
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write  # allow downstream workflow to push tags
+
+jobs:
+  version-auto-tag:
+    uses: draftm0de/flutter/.github/workflows/release.yml@main

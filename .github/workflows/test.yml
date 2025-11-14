@@ -1,0 +1,8 @@
+name: Flutter Tests
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    uses: draftm0de/flutter/.github/workflows/test.yml@main
