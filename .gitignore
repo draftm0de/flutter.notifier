@@ -24,6 +24,7 @@ migrate_working_dir/
 .pub/
 .dart_tool/
 pubspec.lock
+/lib/l10n/*localizations*
 **/doc/api/
 /build/
 /coverage/
