@@ -1,34 +1,45 @@
-# DraftMode Clone
+# DraftMode Notifier
 
-This repository is a ready-to-clone starter for spinning up a clean Flutter project. Pull it down, rename the package, and you have a fully configured workspace with up-to-date Flutter constraints, localization scaffolding, and a helper script for refreshing dependencies.
+DraftMode Notifier wraps `flutter_local_notifications` with a ready-made Yes/No workflow. The package wires notification categories, handles permission requests, and exposes a simple API for showing actionable alerts from Dart without touching any platform code.
 
-As we keep building, this README will expand into a living reference that captures everything you need to develop productively with Flutter—from environment setup tips and code style guidance to build, test, and release workflows. Check back often as we document more of the recommended practices.
+## How it works
 
-## Github
-### Protect your `main` branch
-- Got to you repo on [Github.com](https://github.com)
-- Click ⚙️ Settings.
-- In the left sidebar, click Branches.
-- "Add classic branch protection rule"
-- Set **Branch name patter** to `main`
-- [x] Require a pull request before merging
-- [x] Require status checks to pass before merging
-- Click **Save**
-### .git/hook/pre-commit
+- `DraftModeNotifier.init()` configures the Darwin category with **YES/NO** actions, requests iOS/macOS permissions, and creates the Android channel only once per run.
+- `registerOnConfirmHandler` lets you react to taps whether the handler is set before or after the notification fires. Pending taps are replayed automatically.
+- `showActionNotification` posts a high-priority notification that includes an optional subtitle for extra emphasis on both Android and iOS.
+- The included iOS plugin (`ios/Classes/DraftmodeNotifierPlugin.swift`) sets the `UNUserNotificationCenter` delegate so consumers never need to edit their own `AppDelegate`.
+
+```dart
+Future<void> bootstrap() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await DraftModeNotifier.instance.init();
+  DraftModeNotifier.instance.registerOnConfirmHandler(() async {
+    // React to the confirmation.
+  });
+}
+
+Future<void> pushReminder() {
+  return DraftModeNotifier.instance.showActionNotification(
+    id: 42,
+    title: 'Leave Draft Mode?',
+    subtitle: 'Syncing will stop in 30s',
+    body: 'Tap yes to resume or no to stay in draft.',
+  );
+}
 ```
-#!/bin/sh
 
-printf '\nRunning dart format --output=write .\n'
-if ! dart format --output=write .; then
-  echo 'dart format failed; aborting commit.'
-  exit 1
-fi
-```
-```bash
-chmod +x .git/hook/pre-commit
-```
+## Example app
+The sample under `example/` demonstrates a countdown UI: enter title/message (+ optional subtitle), choose a delay, and the app shows the notification after counting down live on screen. Run it with `flutter run` (device or simulator) to see the complete flow, including handling taps while the app is in the background.
 
-## Workflows
-Recommended workflow files
-- [.github/workflows/ci.yml](https://github.com/draftm0de/github.workflows/blob/main/.github/workflows/flutter-ci.md)
-- [.github/workflows/release.yml](https://github.com/draftm0de/github.workflows/blob/main/.github/workflows/flutter-release.md)
+## Development workflow
+
+1. Install deps: `flutter pub get` (root) and `flutter pub get` inside `example/` if run separately.
+2. Format all Dart sources: `dart format .`.
+3. Static analysis: `flutter analyze`.
+4. Run tests with coverage: `flutter test --coverage`.
+5. Generate an HTML coverage report: `genhtml coverage/lcov.info -o coverage/html` and open `coverage/html/index.html` in a browser.
+
+The `flutter.update.sh` script performs a clean build, refreshes dependencies, and regenerates `flutter gen-l10n` output when configured—use it when upgrading Flutter or packages.
+
+## Testing guidance
+Tests live under `test/` and mirror the `lib/` layout. Every behavior exposed by `DraftModeNotifier` has direct coverage, including notification id normalization, tap handling, and countdown logic in the example utility code. CI should block merges unless `flutter test` passes and coverage remains at 100%.

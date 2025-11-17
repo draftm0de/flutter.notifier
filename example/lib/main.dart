@@ -85,7 +85,7 @@ class _NotifierDemoState extends State<NotifierDemo> {
   final TextEditingController _titleController = TextEditingController(
     text: 'title',
   );
-  final TextEditingController _subTitleController = TextEditingController(
+  final TextEditingController _subtitleController = TextEditingController(
     text: '',
   );
   final TextEditingController _messageController = TextEditingController(
@@ -103,7 +103,7 @@ class _NotifierDemoState extends State<NotifierDemo> {
     _titleController.dispose();
     _messageController.dispose();
     _secondsController.dispose();
-    _subTitleController.dispose();
+    _subtitleController.dispose();
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -165,7 +165,8 @@ class _NotifierDemoState extends State<NotifierDemo> {
       id: DateTime.now().millisecondsSinceEpoch,
       title: _titleController.text,
       body: _messageController.text,
-      subtitle: _subTitleController.text
+      subtitle:
+          _subtitleController.text.isEmpty ? null : _subtitleController.text,
     );
   }
 
@@ -204,8 +205,8 @@ class _NotifierDemoState extends State<NotifierDemo> {
                 style: const TextStyle(fontSize: 20),
               ),
               CupertinoTextField(
-                controller: _subTitleController,
-                placeholder: 'subTitle',
+                controller: _subtitleController,
+                placeholder: 'Subtitle (optional)',
                 style: const TextStyle(fontSize: 20),
               ),
               CupertinoTextField(

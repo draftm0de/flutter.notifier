@@ -1,26 +1,48 @@
 import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 const int _kMaxNotificationId = 0x7fffffff;
 
+/// Coordinates local notification set up and tap handling for DraftMode apps.
 class DraftModeNotifier {
-  DraftModeNotifier._();
-  static final instance = DraftModeNotifier._();
+  DraftModeNotifier._({FlutterLocalNotificationsPlugin? plugin})
+      : _fln = plugin ?? FlutterLocalNotificationsPlugin();
 
-  final _fln = FlutterLocalNotificationsPlugin();
+  /// Creates a notifier that wraps a custom notifications plugin (used in tests).
+  @visibleForTesting
+  factory DraftModeNotifier.test(FlutterLocalNotificationsPlugin plugin) {
+    return DraftModeNotifier._(plugin: plugin);
+  }
+
+  static DraftModeNotifier? _instance;
+
+  /// Shared singleton used by production code.
+  static DraftModeNotifier get instance {
+    return _instance ??= DraftModeNotifier._();
+  }
+
+  /// Replaces the singleton for tests.
+  @visibleForTesting
+  static void debugResetInstance(DraftModeNotifier? notifier) {
+    _instance = notifier;
+  }
+
+  final FlutterLocalNotificationsPlugin _fln;
   static const _channelId = 'confirm_channel';
   static const _iosCategoryId = 'CONFIRM_LEAVE';
   Future<void> Function()? _onConfirm;
   bool _pendingConfirm = false;
   bool _isInitialized = false;
 
+  /// Sets up categories, permissions, and the Android channel exactly once.
   Future<void> init() async {
     if (_isInitialized) {
       return;
     }
     _isInitialized = true;
-    // iOS categories with actions
+
     final darwinInit = DarwinInitializationSettings(
       notificationCategories: [
         DarwinNotificationCategory(
@@ -52,7 +74,6 @@ class DraftModeNotifier {
 
     await _requestPermissions();
 
-    // Android channel
     const channel = AndroidNotificationChannel(
       _channelId,
       'Confirmations',
@@ -65,6 +86,7 @@ class DraftModeNotifier {
         ?.createNotificationChannel(channel);
   }
 
+  /// Stores the callback to run when a confirmation notification is tapped.
   void registerOnConfirmHandler(Future<void> Function() handler) {
     _onConfirm = handler;
     if (_pendingConfirm) {
@@ -98,12 +120,12 @@ class DraftModeNotifier {
     }
   }
 
-  // Post the action notification
+  /// Posts an actionable alert with native Yes/No buttons.
   Future<void> showActionNotification({
     required int id,
     required String title,
     required String body,
-    String? subtitle
+    String? subtitle,
   }) async {
     final safeId = _normalizeNotificationId(id);
     final android = AndroidNotificationDetails(
@@ -130,7 +152,7 @@ class DraftModeNotifier {
     );
     final ios = DarwinNotificationDetails(
       categoryIdentifier: _iosCategoryId,
-      subtitle: subtitle
+      subtitle: subtitle,
     );
 
     await _fln.show(
@@ -142,11 +164,13 @@ class DraftModeNotifier {
     );
   }
 
+  /// Cancels a notification, normalizing the id to stay within Android limits.
   Future<void> cancel(int id) => _fln.cancel(_normalizeNotificationId(id));
 }
 
+/// Background entrypoint wired into [FlutterLocalNotificationsPlugin].
 @pragma('vm:entry-point')
-void notificationTapBackground(NotificationResponse response) async {
+Future<void> notificationTapBackground(NotificationResponse response) async {
   await DraftModeNotifier.instance._handleNotificationResponse(response);
 }
 
