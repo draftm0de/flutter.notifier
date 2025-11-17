@@ -6,3 +6,4 @@ if [ -f "l10n.yaml" ]; then
 fi
 flutter pub upgrade --major-versions
 flutter pub outdated --no-transitive
+#flutter create --platforms=ios .

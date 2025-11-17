@@ -1,0 +1,32 @@
+name: draftmode_notifier_example
+description: Example app for DraftMode Notifier plugin.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: "3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  draftmode_notifier:
+    path: ../../notifier
+#    git: https://github.com/draftm0de/flutter.notifier
+#    version: ^1.0.0
+
+  draftmode_ui:
+    path: ../../ui
+#    git: https://github.com/draftm0de/flutter.ui
+#    version: ^1.0.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
