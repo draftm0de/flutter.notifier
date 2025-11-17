@@ -1,9 +1,0 @@
-name: Flutter CI
-
-on:
-  pull_request:
-    branches: [main]
-
-jobs:
-  ci:
-    uses: draftm0de/flutter/.github/workflows/ci.yml@main

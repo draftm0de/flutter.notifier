@@ -27,3 +27,8 @@ fi
 ```bash
 chmod +x .git/hook/pre-commit
 ```
+
+## Workflows
+Recommended workflow files
+- [.github/workflows/ci.yml](https://github.com/draftm0de/github.workflows/blob/main/.github/workflows/flutter-ci.md)
+- [.github/workflows/release.yml](https://github.com/draftm0de/github.workflows/blob/main/.github/workflows/flutter-release.md)
