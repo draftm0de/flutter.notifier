@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:draftmode_notifier/notifier.dart';
 import 'package:draftmode_ui/pages.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -82,28 +85,101 @@ class _NotifierDemoState extends State<NotifierDemo> {
   final TextEditingController _titleController = TextEditingController(
     text: 'title',
   );
+  final TextEditingController _subTitleController = TextEditingController(
+    text: '',
+  );
   final TextEditingController _messageController = TextEditingController(
     text: 'message',
   );
+  final TextEditingController _secondsController = TextEditingController(
+    text: '5',
+  );
+  String? _inputError;
+  Duration? _remaining;
+  Timer? _countdownTimer;
 
   @override
   void dispose() {
     _titleController.dispose();
     _messageController.dispose();
+    _secondsController.dispose();
+    _subTitleController.dispose();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
+  void _startCountdown(int seconds) {
+    _countdownTimer?.cancel();
+    setState(() {
+      _remaining = Duration(seconds: seconds);
+    });
+    _countdownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          final current = _remaining;
+          if (current == null || current.inSeconds <= 1) {
+            _remaining = Duration.zero;
+            timer.cancel();
+          } else {
+            _remaining = current - const Duration(seconds: 1);
+          }
+        });
+      },
+    );
+  }
+
+  void _stopCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _remaining = Duration.zero;
+    });
+  }
+
   Future<void> _sendNotification() async {
-    await Future.delayed(const Duration(seconds: 3));
+    final seconds = int.tryParse(_secondsController.text);
+    if (seconds == null || seconds <= 0) {
+      setState(() {
+        _inputError = 'Enter seconds greater than 0';
+      });
+      return;
+    }
+
+    setState(() {
+      _inputError = null;
+    });
+
+    _startCountdown(seconds);
+
+    await Future.delayed(Duration(seconds: seconds));
+    _stopCountdown();
     await DraftModeNotifier.instance.showActionNotification(
       id: DateTime.now().millisecondsSinceEpoch,
       title: _titleController.text,
       body: _messageController.text,
+      subtitle: _subTitleController.text
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final remText = _formatDuration(_remaining ?? Duration.zero);
+    final statusText = 'Remaining: $remText';
+
     return DraftModeUIPageExample(
       title: 'Notifier Demo',
       children: [
@@ -128,10 +204,37 @@ class _NotifierDemoState extends State<NotifierDemo> {
                 style: const TextStyle(fontSize: 20),
               ),
               CupertinoTextField(
-                controller: _messageController,
-                placeholder: 'Message',
+                controller: _subTitleController,
+                placeholder: 'subTitle',
                 style: const TextStyle(fontSize: 20),
               ),
+              CupertinoTextField(
+                controller: _messageController,
+                placeholder: 'Message',
+                minLines: 4,
+                maxLines: 7,
+                style: const TextStyle(fontSize: 20),
+              ),
+              CupertinoTextField(
+                controller: _secondsController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                placeholder: 'e.g. 20',
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                statusText,
+                style: const TextStyle(fontSize: 20),
+                textAlign: TextAlign.center,
+              ),
+              if (_inputError != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _inputError!,
+                  style: const TextStyle(color: CupertinoColors.systemRed),
+                ),
+              ],
             ],
           ),
         ),

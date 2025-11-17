@@ -61,8 +61,7 @@ class DraftModeNotifier {
     );
     await _fln
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-    >()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
   }
 
@@ -75,20 +74,15 @@ class DraftModeNotifier {
   }
 
   Future<void> _requestPermissions() async {
-    final ios = _fln
-        .resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin
-    >();
+    final ios = _fln.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
     await ios?.requestPermissions(alert: true, badge: true, sound: true);
-    final mac = _fln
-        .resolvePlatformSpecificImplementation<
-        MacOSFlutterLocalNotificationsPlugin
-    >();
+    final mac = _fln.resolvePlatformSpecificImplementation<
+        MacOSFlutterLocalNotificationsPlugin>();
     await mac?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   Future<void> _handleNotificationResponse(NotificationResponse resp) async {
-    debugPrint('Notification tapped: ${resp.payload} action=${resp.actionId}');
     final type = resp.notificationResponseType;
     final shouldConfirm =
         type == NotificationResponseType.selectedNotification ||
@@ -109,11 +103,13 @@ class DraftModeNotifier {
     required int id,
     required String title,
     required String body,
+    String? subtitle
   }) async {
     final safeId = _normalizeNotificationId(id);
     final android = AndroidNotificationDetails(
       _channelId,
       'Confirmations',
+      subText: subtitle,
       channelDescription: 'Actionable confirmations',
       importance: Importance.high,
       priority: Priority.high,
@@ -132,8 +128,9 @@ class DraftModeNotifier {
         ),
       ],
     );
-    final ios = const DarwinNotificationDetails(
+    final ios = DarwinNotificationDetails(
       categoryIdentifier: _iosCategoryId,
+      subtitle: subtitle
     );
 
     await _fln.show(
@@ -150,9 +147,7 @@ class DraftModeNotifier {
 
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse response) async {
-  debugPrint("notificationTapBackground");
-  await DraftModeNotifier.instance
-      ._handleNotificationResponse(response);
+  await DraftModeNotifier.instance._handleNotificationResponse(response);
 }
 
 @visibleForTesting
