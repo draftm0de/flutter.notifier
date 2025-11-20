@@ -92,7 +92,9 @@ class DraftModeNotifier {
   /// Registers a handler that fires when a notification with [payload] is tapped.
   ///
   /// If the notification was tapped before [handler] is registered, the tap
-  /// will be replayed once registration completes.
+  /// will be replayed once registration completes. Use [triggerFilter] to accept
+  /// only certain responses (for example, YES versus NO). Passing a `null`
+  /// [handler] effectively clears the existing consumer for the payload.
   void registerNotificationConsumer({
     required String payload,
     Future<void> Function(DraftModeNotificationResponse response)? handler,

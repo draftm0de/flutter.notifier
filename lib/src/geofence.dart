@@ -2,11 +2,12 @@ import 'package:flutter/widgets.dart';
 import 'foreground.dart';
 import 'notifier.dart';
 
+/// Modes used to differentiate ENTER versus EXIT notifications.
 enum DraftModeGeofenceNotificationMode { enter, exit }
 
+/// Ties [DraftModeNotifier] payloads to foreground dialog flows.
 class DraftModeGeofenceNotification {
-  DraftModeGeofenceNotification(
-      {required GlobalKey<NavigatorState> navigatorKey})
+  DraftModeGeofenceNotification({required GlobalKey<NavigatorState> navigatorKey})
       : _navigatorKey = navigatorKey {
     _instance ??= this;
   }
@@ -26,6 +27,7 @@ class DraftModeGeofenceNotification {
   bool _isInitialized = false;
   DraftModeNotifierForegroundDialog? _dialogPresenter;
 
+  /// Registers optional tap handlers for enter/exit payloads.
   Future<void> init({
     Future<void> Function(DraftModeNotificationResponse)? onEnter,
     Future<void> Function(DraftModeNotificationResponse)? onExit,
@@ -57,6 +59,7 @@ class DraftModeGeofenceNotification {
     }
   }
 
+  /// Presents a Cupertino dialog routed through the supplied navigator.
   Future<void> showDialog({
     required String title,
     required String content,
