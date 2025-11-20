@@ -1,15 +1,25 @@
 import 'package:draftmode_ui/components.dart';
 import 'package:flutter/cupertino.dart';
 
+/// Function signature used to present dialogs (overridden in tests).
+typedef DraftModeDialogPresenter = Future<void> Function({
+  required BuildContext context,
+  required String title,
+  required String message,
+});
+
 /// Waits for the root navigator context before showing Cupertino dialogs.
 class DraftModeNotifierForegroundDialog {
   DraftModeNotifierForegroundDialog({
     required GlobalKey<NavigatorState> navigatorKey,
     this.waitTimeout = const Duration(seconds: 2),
-  }) : _navigatorKey = navigatorKey;
+    DraftModeDialogPresenter? presenter,
+  })  : _navigatorKey = navigatorKey,
+        _showDialog = presenter ?? DraftModeUIDialog.show;
 
   final GlobalKey<NavigatorState> _navigatorKey;
   final Duration waitTimeout;
+  final DraftModeDialogPresenter _showDialog;
 
   Future<BuildContext?> _waitForRootContext() async {
     BuildContext? ctx = _navigatorKey.currentContext;
@@ -40,10 +50,6 @@ class DraftModeNotifierForegroundDialog {
     if (navigatorState == null || !navigatorState.mounted || !ctx.mounted) {
       return;
     }
-    await DraftModeUIDialog.show(
-      context: ctx,
-      title: title,
-      message: content,
-    );
+    await _showDialog(context: ctx, title: title, message: content);
   }
 }

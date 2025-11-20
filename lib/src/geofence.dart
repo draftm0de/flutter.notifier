@@ -7,12 +7,18 @@ enum DraftModeGeofenceNotificationMode { enter, exit }
 
 /// Ties [DraftModeNotifier] payloads to foreground dialog flows.
 class DraftModeGeofenceNotification {
-  DraftModeGeofenceNotification({required GlobalKey<NavigatorState> navigatorKey})
-      : _navigatorKey = navigatorKey {
+  DraftModeGeofenceNotification({
+    required GlobalKey<NavigatorState> navigatorKey,
+    DraftModeNotifier? notifier,
+    DraftModeNotifierForegroundDialog? dialogPresenter,
+  })  : _navigatorKey = navigatorKey,
+        _notifier = notifier ?? DraftModeNotifier.instance,
+        _dialogPresenter = dialogPresenter {
     _instance ??= this;
   }
 
   final GlobalKey<NavigatorState> _navigatorKey;
+  final DraftModeNotifier _notifier;
 
   static DraftModeGeofenceNotification? _instance;
 
@@ -27,6 +33,11 @@ class DraftModeGeofenceNotification {
   bool _isInitialized = false;
   DraftModeNotifierForegroundDialog? _dialogPresenter;
 
+  @visibleForTesting
+  static void debugResetInstance() {
+    _instance = null;
+  }
+
   /// Registers optional tap handlers for enter/exit payloads.
   Future<void> init({
     Future<void> Function(DraftModeNotificationResponse)? onEnter,
@@ -35,24 +46,23 @@ class DraftModeGeofenceNotification {
     if (_isInitialized) {
       return;
     }
-    _isInitialized = true;
-
     if (onEnter == null && onExit == null) {
       return;
     }
+    _isInitialized = true;
 
     _dialogPresenter ??=
         DraftModeNotifierForegroundDialog(navigatorKey: _navigatorKey);
 
-    await DraftModeNotifier.instance.init();
+    await _notifier.init();
     if (onEnter != null) {
-      DraftModeNotifier.instance.registerNotificationConsumer(
+      _notifier.registerNotificationConsumer(
         payload: DraftModeGeofenceNotificationMode.enter.name,
         handler: onEnter,
       );
     }
     if (onExit != null) {
-      DraftModeNotifier.instance.registerNotificationConsumer(
+      _notifier.registerNotificationConsumer(
         payload: DraftModeGeofenceNotificationMode.exit.name,
         handler: onExit,
       );

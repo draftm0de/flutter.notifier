@@ -101,7 +101,8 @@ class DraftModeNotifier {
     bool Function(DraftModeNotificationResponse response)? triggerFilter,
   }) {
     final normalized = _normalizePayload(payload);
-    _consumers[normalized] = _NotificationConsumer(handler: handler, filter: triggerFilter);
+    _consumers[normalized] =
+        _NotificationConsumer(handler: handler, filter: triggerFilter);
     _replayPendingResponses(normalized);
   }
 

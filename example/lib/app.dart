@@ -1,4 +1,3 @@
-
 import 'package:draftmode_notifier_example/screen/home.dart';
 import 'package:flutter/cupertino.dart';
 
