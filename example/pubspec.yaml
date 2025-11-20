@@ -14,7 +14,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   draftmode_notifier:
-    path: ../../notifier
+    path: ..
 #    git: https://github.com/draftm0de/flutter.notifier
 #    version: ^1.0.0
 
