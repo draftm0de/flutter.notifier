@@ -5,7 +5,7 @@ DraftMode Notifier wraps `flutter_local_notifications` with a ready-made Yes/No 
 ## How it works
 
 - `DraftModeNotifier.init()` configures the Darwin category with **YES/NO** actions, requests iOS/macOS permissions, and creates the Android channel only once per run.
-- `registerOnConfirmHandler` lets you react to taps whether the handler is set before or after the notification fires. Pending taps are replayed automatically.
+- `registerNotificationConsumer` connects tap handlers to payloads. Registering with `DraftModeNotifier.confirmPayload` replays pending taps even if the handler was added late.
 - `showActionNotification` posts a high-priority notification that includes an optional subtitle for extra emphasis on both Android and iOS.
 - The included iOS plugin (`ios/Classes/DraftmodeNotifierPlugin.swift`) sets the `UNUserNotificationCenter` delegate so consumers never need to edit their own `AppDelegate`.
 
@@ -13,9 +13,13 @@ DraftMode Notifier wraps `flutter_local_notifications` with a ready-made Yes/No 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DraftModeNotifier.instance.init();
-  DraftModeNotifier.instance.registerOnConfirmHandler(() async {
-    // React to the confirmation.
-  });
+  DraftModeNotifier.instance.registerNotificationConsumer(
+    payload: DraftModeNotifier.confirmPayload,
+    triggerFilter: DraftModeNotifier.isConfirmResponse,
+    handler: (_) async {
+      // React to the confirmation.
+    },
+  );
 }
 
 Future<void> pushReminder() {

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:draftmode_notifier/notifier.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +22,17 @@ class _FakeNotificationDetails extends Fake implements NotificationDetails {}
 
 class _FakeAndroidNotificationChannel extends Fake
     implements AndroidNotificationChannel {}
+
+void _registerConfirmConsumer(
+  DraftModeNotifier notifier,
+  void Function() callback,
+) {
+  notifier.registerNotificationConsumer(
+    payload: DraftModeNotifier.confirmPayload,
+    triggerFilter: DraftModeNotifier.isConfirmResponse,
+    handler: (_) async => callback(),
+  );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -139,6 +148,24 @@ void main() {
     expect(captured[4], 'confirm');
   });
 
+  test('showActionNotification forwards provided payload', () async {
+    await notifier.showActionNotification(
+      id: 2,
+      title: 'title',
+      body: 'body',
+      payload: 'open_path',
+    );
+
+    final captured = verify(() => plugin.show(
+          any(),
+          any(),
+          any(),
+          any(),
+          payload: captureAny(named: 'payload'),
+        )).captured;
+    expect(captured.single, 'open_path');
+  });
+
   test('cancel normalizes ids', () async {
     await notifier.cancel(0);
     verify(() => plugin.cancel(1)).called(1);
@@ -154,7 +181,7 @@ void main() {
   test('foreground tap triggers registered handler immediately', () async {
     await notifier.init();
     var called = 0;
-    notifier.registerOnConfirmHandler(() async {
+    _registerConfirmConsumer(notifier, () {
       called++;
     });
 
@@ -174,7 +201,7 @@ void main() {
     ));
 
     var called = 0;
-    notifier.registerOnConfirmHandler(() async {
+    _registerConfirmConsumer(notifier, () {
       called++;
     });
 
@@ -185,7 +212,7 @@ void main() {
   test('NO action tap is ignored', () async {
     await notifier.init();
     var called = 0;
-    notifier.registerOnConfirmHandler(() async {
+    _registerConfirmConsumer(notifier, () {
       called++;
     });
 
@@ -199,11 +226,78 @@ void main() {
     expect(called, 0);
   });
 
+  test('custom payload tap dispatches to matching handler', () async {
+    await notifier.init();
+    var called = 0;
+    notifier.registerNotificationConsumer(
+      payload: 'open_path',
+      handler: (_) async {
+        called++;
+      },
+    );
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+      payload: 'open_path',
+    ));
+
+    await Future<void>.delayed(Duration.zero);
+    expect(called, 1);
+  });
+
+  test('custom payload tap is buffered until handler is registered', () async {
+    await notifier.init();
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+      payload: 'dialog',
+    ));
+
+    var called = 0;
+    notifier.registerNotificationConsumer(
+      payload: 'dialog',
+      handler: (_) async {
+        called++;
+      },
+    );
+
+    await Future<void>.delayed(Duration.zero);
+    expect(called, 1);
+  });
+
+  test('custom payload filter skips unmatched responses', () async {
+    await notifier.init();
+    var openCalled = 0;
+    notifier.registerNotificationConsumer(
+      payload: 'command',
+      triggerFilter: (resp) => resp.actionId == 'OPEN',
+      handler: (_) async {
+        openCalled++;
+      },
+    );
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType:
+          NotificationResponseType.selectedNotificationAction,
+      payload: 'command',
+      actionId: 'DISMISS',
+    ));
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType:
+          NotificationResponseType.selectedNotificationAction,
+      payload: 'command',
+      actionId: 'OPEN',
+    ));
+
+    await Future<void>.delayed(Duration.zero);
+    expect(openCalled, 1);
+  });
+
   test('notificationTapBackground delegates to singleton instance', () async {
     DraftModeNotifier.debugResetInstance(notifier);
     await notifier.init();
     var called = 0;
-    notifier.registerOnConfirmHandler(() async {
+    _registerConfirmConsumer(notifier, () {
       called++;
     });
 
