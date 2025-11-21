@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:draftmode_notifier/notifier.dart';
 import 'package:draftmode_ui/components.dart';
 import 'package:draftmode_ui/pages.dart';
 import 'package:flutter/cupertino.dart';
-import '../config.dart';
+//
+import '../geofence/mode.dart';
+import '../geofence/notifier.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,8 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _sendGeofenceNotification(
-      DraftModeGeofenceNotificationMode action) async {
-    await TimeTacGeofenceNotification.instance.sendNotification(action);
+      DraftModeGeofenceMode action) async {
+    await GeofenceNotifier.instance.sendNotification(action);
   }
 
   @override
@@ -67,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               child: CupertinoButton.filled(
                 onPressed: () => _sendGeofenceNotification(
-                    DraftModeGeofenceNotificationMode.enter),
+                    DraftModeGeofenceMode.enter),
                 child: const Text('Trigger ENTER notification'),
               ),
             ),
@@ -76,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               child: CupertinoButton(
                 onPressed: () => _sendGeofenceNotification(
-                    DraftModeGeofenceNotificationMode.exit),
+                    DraftModeGeofenceMode.exit),
                 borderRadius: const BorderRadius.all(Radius.circular(12)),
                 color: CupertinoColors.systemGrey,
                 child: const Text('Trigger EXIT notification'),

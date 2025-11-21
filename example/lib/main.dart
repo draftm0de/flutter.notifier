@@ -1,14 +1,16 @@
+import 'package:draftmode_ui/context.dart';
 import 'package:flutter/cupertino.dart';
-
+//
+import 'geofence/notifier.dart';
 import 'app.dart';
-import 'config.dart';
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await TimeTacGeofenceNotification(navigatorKey: _navigatorKey).init();
+  DraftModeUIContext.init(navigatorKey: _navigatorKey);
+  await GeofenceNotifier().init();
 /*
   await DraftModeNotifier.instance.init();
   DraftModeNotifier.instance.registerNotificationConsumer(

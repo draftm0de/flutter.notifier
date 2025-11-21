@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
+//
 import '../flutter/notification.dart';
+import 'response.dart';
 
 const int _kMaxNotificationId = 0x7fffffff;
 
@@ -101,6 +103,7 @@ class DraftModeNotifier {
     bool Function(DraftModeNotificationResponse response)? triggerFilter,
   }) {
     final normalized = _normalizePayload(payload);
+    debugPrint("registerNotificationConsumer: $normalized");
     _consumers[normalized] =
         _NotificationConsumer(handler: handler, filter: triggerFilter);
     _replayPendingResponses(normalized);
@@ -117,7 +120,7 @@ class DraftModeNotifier {
 
   Future<void> _handleNotificationResponse(NotificationResponse resp) async {
     final payload = _normalizePayload(resp.payload);
-    final wrapped = DraftModeNotificationResponse._fromPlugin(
+    final wrapped = DraftModeNotificationResponse.fromPlugin(
       normalizedPayload: payload,
       response: resp,
     );
@@ -198,6 +201,7 @@ int _normalizeNotificationId(int id) {
   return normalized == 0 ? 1 : normalized;
 }
 
+/// Ensures payloads always have a routing value.
 String _normalizePayload(String? payload) {
   if (payload == null || payload.isEmpty) {
     return DraftModeNotifier._confirmPayload;
@@ -205,6 +209,7 @@ String _normalizePayload(String? payload) {
   return payload;
 }
 
+/// Holds callbacks registered for a normalized notification payload.
 class _NotificationConsumer {
   const _NotificationConsumer({
     this.handler,
@@ -216,10 +221,14 @@ class _NotificationConsumer {
 }
 
 extension on DraftModeNotifier {
+  /// Dispatches a response to its handler or buffers it until registration.
   Future<void> _dispatchNotification(
       DraftModeNotificationResponse response) async {
-    final consumer = _consumers[response.payload];
+    final normalized = _normalizePayload(response.payload);
+    debugPrint("_dispatchNotification:$normalized");
+    final consumer = _consumers[normalized];
     if (consumer == null) {
+      debugPrint("_dispatchNotification:no consumer");
       _pendingResponses.putIfAbsent(response.payload, () => []).add(response);
       return;
     }
@@ -228,10 +237,12 @@ extension on DraftModeNotifier {
       return;
     }
     if (consumer.handler != null) {
+      debugPrint("_dispatchNotification:handle:${response.payload}");
       await consumer.handler!(response);
     }
   }
 
+  /// Replays buffered responses for [payload] using fire-and-forget semantics.
   void _replayPendingResponses(String payload) {
     final pending = _pendingResponses.remove(payload);
     if (pending == null || pending.isEmpty) {
@@ -240,60 +251,5 @@ extension on DraftModeNotifier {
     for (final response in pending) {
       unawaited(_dispatchNotification(response));
     }
-  }
-}
-
-/// Provides payload and action context for a tapped local notification.
-class DraftModeNotificationResponse {
-  DraftModeNotificationResponse._({
-    required this.payload,
-    required this.notificationResponseType,
-    this.actionId,
-    this.input,
-    this.notificationId,
-  });
-
-  factory DraftModeNotificationResponse._fromPlugin({
-    required String normalizedPayload,
-    required NotificationResponse response,
-  }) {
-    return DraftModeNotificationResponse._(
-      payload: normalizedPayload,
-      notificationResponseType:
-          _mapResponseType(response.notificationResponseType),
-      actionId: response.actionId,
-      input: response.input,
-      notificationId: response.id,
-    );
-  }
-
-  /// Normalized payload string DraftModeNotifier uses for routing.
-  final String payload;
-
-  /// Translated response type describing how the notification was engaged.
-  final DraftModeNotificationResponseType notificationResponseType;
-
-  /// Native identifier for the action button, when present.
-  final String? actionId;
-
-  /// Freeform input text returned by text input actions.
-  final String? input;
-
-  /// Notification id provided when the alert was shown, if included.
-  final int? notificationId;
-}
-
-enum DraftModeNotificationResponseType {
-  selectedNotification,
-  selectedNotificationAction,
-}
-
-DraftModeNotificationResponseType _mapResponseType(
-    NotificationResponseType type) {
-  switch (type) {
-    case NotificationResponseType.selectedNotification:
-      return DraftModeNotificationResponseType.selectedNotification;
-    case NotificationResponseType.selectedNotificationAction:
-      return DraftModeNotificationResponseType.selectedNotificationAction;
   }
 }

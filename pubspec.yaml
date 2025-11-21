@@ -1,7 +1,7 @@
 name: draftmode_notifier
 description: your description
 publish_to: "none"
-version: 0.0.0+1
+version: 0.1.0
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -14,9 +14,6 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
   flutter_local_notifications: ^19.5.0
-  draftmode_ui:
-    git: https://github.com/draftm0de/flutter.ui
-    version: ^1.0.0
 
 dev_dependencies:
   flutter_test:

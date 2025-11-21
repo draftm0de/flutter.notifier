@@ -57,4 +57,4 @@ The sample under `example/` simulates a TimeTac geofence flow: tapping **Trigger
 The `flutter.update.sh` script performs a clean build, refreshes dependencies, and regenerates `flutter gen-l10n` output when configured—use it when upgrading Flutter or packages.
 
 ## Testing guidance
-Tests live under `test/` and mirror the `lib/` layout. Every behavior exposed by `DraftModeNotifier` has direct coverage, including notification id normalization, payload routing, and buffering taps until a consumer is registered. CI should block merges unless `flutter test` passes and coverage remains at 100%.
+Tests live under `test/` and mirror the `lib/` layout. Every behavior exposed by `DraftModeNotifier` has direct coverage, including notification id normalization, payload routing, dialog bridges, and buffering taps until a consumer is registered. CI should block merges unless `flutter test` passes and coverage remains at **100%**—lint and coverage gates offer fast feedback before a pull request ever leaves your machine.
