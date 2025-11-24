@@ -1,19 +1,18 @@
 import 'dart:async';
+import 'package:draftmode_notifier/notifier.dart';
+import 'package:draftmode_notifier_example/notifier.dart';
 import 'package:draftmode_ui/components.dart';
 import 'package:draftmode_ui/pages.dart';
 import 'package:flutter/cupertino.dart';
-//
-import '../geofence/mode.dart';
-import '../geofence/notifier.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   final TextEditingController _titleController = TextEditingController(
     text: 'title',
   );
@@ -32,9 +31,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _sendGeofenceNotification(
-      DraftModeGeofenceMode action) async {
-    await GeofenceNotifier.instance.sendNotification(action);
+  Future<void> sendNotification() async {
+    await DraftModeNotifier.instance.pushNotification(
+      title: _titleController.text,
+      subtitle: _subtitleController.text,
+      body: _messageController.text,
+      payload: Notifier.notifierKey,
+    );
   }
 
   @override
@@ -67,20 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(
               width: double.infinity,
               child: CupertinoButton.filled(
-                onPressed: () => _sendGeofenceNotification(
-                    DraftModeGeofenceMode.enter),
-                child: const Text('Trigger ENTER notification'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: CupertinoButton(
-                onPressed: () => _sendGeofenceNotification(
-                    DraftModeGeofenceMode.exit),
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                color: CupertinoColors.systemGrey,
-                child: const Text('Trigger EXIT notification'),
+                onPressed: () => sendNotification(),
+                child: const Text('Send Notification'),
               ),
             ),
           ],

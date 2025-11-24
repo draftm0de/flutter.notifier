@@ -27,7 +27,7 @@ void _registerConfirmConsumer(
   DraftModeNotifier notifier,
   void Function() callback,
 ) {
-  notifier.registerNotificationConsumer(
+  notifier.registerConsumer(
     payload: DraftModeNotifier.confirmPayload,
     triggerFilter: DraftModeNotifier.isConfirmResponse,
     handler: (_) async => callback(),
@@ -49,6 +49,7 @@ void main() {
   late _MockIOSFlutterLocalNotificationsPlugin iosPlugin;
   late _MockMacFlutterLocalNotificationsPlugin macPlugin;
   DidReceiveNotificationResponseCallback? onForegroundResponse;
+  InitializationSettings? initializationSettings;
 
   setUp(() {
     plugin = _MockFlutterLocalNotificationsPlugin();
@@ -56,6 +57,7 @@ void main() {
     iosPlugin = _MockIOSFlutterLocalNotificationsPlugin();
     macPlugin = _MockMacFlutterLocalNotificationsPlugin();
     notifier = DraftModeNotifier.test(plugin);
+    initializationSettings = null;
 
     when(() => plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>()).thenReturn(androidPlugin);
@@ -80,6 +82,8 @@ void main() {
           onDidReceiveBackgroundNotificationResponse:
               any(named: 'onDidReceiveBackgroundNotificationResponse'),
         )).thenAnswer((invocation) async {
+      initializationSettings =
+          invocation.positionalArguments.first as InitializationSettings;
       onForegroundResponse =
           invocation.namedArguments[#onDidReceiveNotificationResponse]
               as DidReceiveNotificationResponseCallback?;
@@ -126,8 +130,8 @@ void main() {
     verify(() => androidPlugin.createNotificationChannel(any())).called(1);
   });
 
-  test('showActionNotification normalizes id and forwards subtitle', () async {
-    await notifier.showActionNotification(
+  test('pushNotification normalizes id and forwards subtitle', () async {
+    await notifier.pushNotification(
       id: 0,
       title: 'title',
       body: 'body',
@@ -145,11 +149,55 @@ void main() {
     final details = captured[3] as NotificationDetails;
     expect(details.android?.subText, 'subtitle');
     expect(details.iOS?.subtitle, 'subtitle');
+    expect(details.android?.actions?.first.title, 'Yes');
+    expect(details.android?.actions?.last.title, 'No');
     expect(captured[4], 'confirm');
   });
 
-  test('showActionNotification forwards provided payload', () async {
-    await notifier.showActionNotification(
+  test('init applies localized action labels', () async {
+    await notifier.init(
+      config: const DraftModeNotifierConfig(
+        yesActionLabel: 'Oui',
+        noActionLabel: 'Non',
+      ),
+    );
+
+    final categories = initializationSettings?.iOS?.notificationCategories;
+    expect(categories, isNotNull);
+    final actions = categories!.single.actions;
+    expect(actions.first.title, 'Oui');
+    expect(actions.last.title, 'Non');
+  });
+
+  test('pushNotification reuses localized action labels', () async {
+    await notifier.init(
+      config: const DraftModeNotifierConfig(
+        yesActionLabel: 'Si',
+        noActionLabel: 'Nope',
+      ),
+    );
+
+    await notifier.pushNotification(
+      id: 7,
+      title: 'title',
+      body: 'body',
+    );
+
+    final details = verify(() => plugin.show(
+          any(),
+          any(),
+          any(),
+          captureAny(),
+          payload: any(named: 'payload'),
+        )).captured.single as NotificationDetails;
+    final actions = details.android?.actions;
+    expect(actions, isNotNull);
+    expect(actions!.first.title, 'Si');
+    expect(actions.last.title, 'Nope');
+  });
+
+  test('pushNotification forwards provided payload', () async {
+    await notifier.pushNotification(
       id: 2,
       title: 'title',
       body: 'body',
@@ -164,6 +212,22 @@ void main() {
           payload: captureAny(named: 'payload'),
         )).captured;
     expect(captured.single, 'open_path');
+  });
+
+  test('pushNotification auto-generates ids when omitted', () async {
+    await notifier.pushNotification(
+      title: 'title',
+      body: 'body',
+    );
+
+    final captured = verify(() => plugin.show(
+          captureAny(),
+          any(),
+          any(),
+          any(),
+          payload: any(named: 'payload'),
+        )).captured;
+    expect(captured.first, greaterThan(0));
   });
 
   test('cancel normalizes ids', () async {
@@ -209,6 +273,30 @@ void main() {
     expect(called, 1);
   });
 
+  test('multiple buffered taps replay after handler registration', () async {
+    await notifier.init();
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+      payload: 'dialog',
+    ));
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+      payload: 'dialog',
+    ));
+
+    var called = 0;
+    notifier.registerConsumer(
+      payload: 'dialog',
+      handler: (_) async {
+        called++;
+      },
+    );
+
+    await Future<void>.delayed(Duration.zero);
+    expect(called, 2);
+  });
+
   test('NO action tap is ignored', () async {
     await notifier.init();
     var called = 0;
@@ -229,7 +317,7 @@ void main() {
   test('custom payload tap dispatches to matching handler', () async {
     await notifier.init();
     var called = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'open_path',
       handler: (_) async {
         called++;
@@ -254,7 +342,7 @@ void main() {
     ));
 
     var called = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'dialog',
       handler: (_) async {
         called++;
@@ -268,7 +356,7 @@ void main() {
   test('custom payload filter skips unmatched responses', () async {
     await notifier.init();
     var openCalled = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'command',
       triggerFilter: (resp) => resp.actionId == 'OPEN',
       handler: (_) async {
@@ -291,6 +379,30 @@ void main() {
 
     await Future<void>.delayed(Duration.zero);
     expect(openCalled, 1);
+  });
+
+  test('registerConsumer replaces the existing handler', () async {
+    await notifier.init();
+    var firstCalled = 0;
+    var secondCalled = 0;
+    _registerConfirmConsumer(notifier, () {
+      firstCalled++;
+    });
+    notifier.registerConsumer(
+      payload: DraftModeNotifier.confirmPayload,
+      triggerFilter: DraftModeNotifier.isConfirmResponse,
+      handler: (_) async {
+        secondCalled++;
+      },
+    );
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+    ));
+
+    await Future<void>.delayed(Duration.zero);
+    expect(firstCalled, 0);
+    expect(secondCalled, 1);
   });
 
   test('notificationTapBackground delegates to singleton instance', () async {
