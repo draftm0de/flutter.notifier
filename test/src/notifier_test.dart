@@ -27,7 +27,7 @@ void _registerConfirmConsumer(
   DraftModeNotifier notifier,
   void Function() callback,
 ) {
-  notifier.registerNotificationConsumer(
+  notifier.registerConsumer(
     payload: DraftModeNotifier.confirmPayload,
     triggerFilter: DraftModeNotifier.isConfirmResponse,
     handler: (_) async => callback(),
@@ -130,8 +130,8 @@ void main() {
     verify(() => androidPlugin.createNotificationChannel(any())).called(1);
   });
 
-  test('showActionNotification normalizes id and forwards subtitle', () async {
-    await notifier.showActionNotification(
+  test('pushNotification normalizes id and forwards subtitle', () async {
+    await notifier.pushNotification(
       id: 0,
       title: 'title',
       body: 'body',
@@ -169,7 +169,7 @@ void main() {
     expect(actions.last.title, 'Non');
   });
 
-  test('showActionNotification reuses localized action labels', () async {
+  test('pushNotification reuses localized action labels', () async {
     await notifier.init(
       config: const DraftModeNotifierConfig(
         yesActionLabel: 'Si',
@@ -177,7 +177,7 @@ void main() {
       ),
     );
 
-    await notifier.showActionNotification(
+    await notifier.pushNotification(
       id: 7,
       title: 'title',
       body: 'body',
@@ -196,8 +196,8 @@ void main() {
     expect(actions.last.title, 'Nope');
   });
 
-  test('showActionNotification forwards provided payload', () async {
-    await notifier.showActionNotification(
+  test('pushNotification forwards provided payload', () async {
+    await notifier.pushNotification(
       id: 2,
       title: 'title',
       body: 'body',
@@ -214,8 +214,8 @@ void main() {
     expect(captured.single, 'open_path');
   });
 
-  test('showActionNotification auto-generates ids when omitted', () async {
-    await notifier.showActionNotification(
+  test('pushNotification auto-generates ids when omitted', () async {
+    await notifier.pushNotification(
       title: 'title',
       body: 'body',
     );
@@ -286,7 +286,7 @@ void main() {
     ));
 
     var called = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'dialog',
       handler: (_) async {
         called++;
@@ -317,7 +317,7 @@ void main() {
   test('custom payload tap dispatches to matching handler', () async {
     await notifier.init();
     var called = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'open_path',
       handler: (_) async {
         called++;
@@ -342,7 +342,7 @@ void main() {
     ));
 
     var called = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'dialog',
       handler: (_) async {
         called++;
@@ -356,7 +356,7 @@ void main() {
   test('custom payload filter skips unmatched responses', () async {
     await notifier.init();
     var openCalled = 0;
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: 'command',
       triggerFilter: (resp) => resp.actionId == 'OPEN',
       handler: (_) async {
@@ -381,14 +381,14 @@ void main() {
     expect(openCalled, 1);
   });
 
-  test('registerNotificationConsumer replaces the existing handler', () async {
+  test('registerConsumer replaces the existing handler', () async {
     await notifier.init();
     var firstCalled = 0;
     var secondCalled = 0;
     _registerConfirmConsumer(notifier, () {
       firstCalled++;
     });
-    notifier.registerNotificationConsumer(
+    notifier.registerConsumer(
       payload: DraftModeNotifier.confirmPayload,
       triggerFilter: DraftModeNotifier.isConfirmResponse,
       handler: (_) async {

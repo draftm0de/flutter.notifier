@@ -4,7 +4,7 @@ DraftMode Notifier wraps `flutter_local_notifications` with a ready-made Yes/No 
 
 ## How it works
 
-`Notifier` in `lib/notifier.dart` registers a single payload with `DraftModeNotifier` and exposes a dialog handler that proves the tap routing works. The home screen collects the notification title/subtitle/body from text fields and calls `showActionNotification` without an id—DraftMode Notifier auto-generates it—so you can tweak copy on the fly while testing.
+`Notifier` in `lib/notifier.dart` registers a single payload with `DraftModeNotifier` and exposes a dialog handler that proves the tap routing works. The home screen collects the notification title/subtitle/body from text fields and calls `pushNotification` without an id—DraftMode Notifier auto-generates it—so you can tweak copy on the fly while testing.
 
 ```dart
 Future<void> main() async {
@@ -12,7 +12,7 @@ Future<void> main() async {
   final navigatorKey = GlobalKey<NavigatorState>();
   DraftModeUIContext.init(navigatorKey: navigatorKey);
   await DraftModeNotifier.instance.init();
-  DraftModeNotifier.instance.registerNotificationConsumer(
+  DraftModeNotifier.instance.registerConsumer(
     payload: Notifier.notifierKey,
     handler: Notifier().handleEnterTap,
   );
@@ -20,7 +20,7 @@ Future<void> main() async {
 }
 
 Future<void> sendNotification() {
-  return DraftModeNotifier.instance.showActionNotification(
+  return DraftModeNotifier.instance.pushNotification(
     title: _titleController.text,
     subtitle: _subtitleController.text,
     body: _messageController.text,

@@ -12,7 +12,7 @@ Future<void> main() async {
 
   DraftModeUIContext.init(navigatorKey: _navigatorKey);
   await DraftModeNotifier.instance.init();
-  DraftModeNotifier.instance.registerNotificationConsumer(
+  DraftModeNotifier.instance.registerConsumer(
     payload: Notifier.notifierKey,
     handler: Notifier().handleEnterTap,
   );

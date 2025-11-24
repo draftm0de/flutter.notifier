@@ -108,7 +108,7 @@ class DraftModeNotifier {
   /// will be replayed once registration completes. Use [triggerFilter] to accept
   /// only certain responses (for example, YES versus NO). Passing a `null`
   /// [handler] effectively clears the existing consumer for the payload.
-  void registerNotificationConsumer({
+  void registerConsumer({
     required String payload,
     Future<void> Function(DraftModeNotificationResponse response)? handler,
     bool Function(DraftModeNotificationResponse response)? triggerFilter,
@@ -144,7 +144,7 @@ class DraftModeNotifier {
   ///
   /// When [id] is omitted, the notifier assigns a timestamp-based identifier so
   /// apps can fire-and-forget notifications without tracking ids manually.
-  Future<void> showActionNotification({
+  Future<void> pushNotification({
     required String title,
     required String body,
     String? subtitle,

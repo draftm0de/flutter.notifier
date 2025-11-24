@@ -32,7 +32,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> sendNotification() async {
-    await DraftModeNotifier.instance.showActionNotification(
+    await DraftModeNotifier.instance.pushNotification(
       title: _titleController.text,
       subtitle: _subtitleController.text,
       body: _messageController.text,
