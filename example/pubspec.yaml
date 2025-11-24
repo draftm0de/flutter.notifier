@@ -18,9 +18,8 @@ dependencies:
     version: ^1.0.0
 
   draftmode_ui:
-    path: ../../ui
-#    git: https://github.com/draftm0de/flutter.ui
-#    version: ^1.0.0
+    git: https://github.com/draftm0de/flutter.ui
+    version: ^1.0.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
