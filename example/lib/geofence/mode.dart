@@ -1,1 +1,0 @@
-enum DraftModeGeofenceMode { enter, exit}

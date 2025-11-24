@@ -49,6 +49,7 @@ void main() {
   late _MockIOSFlutterLocalNotificationsPlugin iosPlugin;
   late _MockMacFlutterLocalNotificationsPlugin macPlugin;
   DidReceiveNotificationResponseCallback? onForegroundResponse;
+  InitializationSettings? initializationSettings;
 
   setUp(() {
     plugin = _MockFlutterLocalNotificationsPlugin();
@@ -56,6 +57,7 @@ void main() {
     iosPlugin = _MockIOSFlutterLocalNotificationsPlugin();
     macPlugin = _MockMacFlutterLocalNotificationsPlugin();
     notifier = DraftModeNotifier.test(plugin);
+    initializationSettings = null;
 
     when(() => plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>()).thenReturn(androidPlugin);
@@ -80,6 +82,8 @@ void main() {
           onDidReceiveBackgroundNotificationResponse:
               any(named: 'onDidReceiveBackgroundNotificationResponse'),
         )).thenAnswer((invocation) async {
+      initializationSettings =
+          invocation.positionalArguments.first as InitializationSettings;
       onForegroundResponse =
           invocation.namedArguments[#onDidReceiveNotificationResponse]
               as DidReceiveNotificationResponseCallback?;
@@ -145,7 +149,51 @@ void main() {
     final details = captured[3] as NotificationDetails;
     expect(details.android?.subText, 'subtitle');
     expect(details.iOS?.subtitle, 'subtitle');
+    expect(details.android?.actions?.first.title, 'Yes');
+    expect(details.android?.actions?.last.title, 'No');
     expect(captured[4], 'confirm');
+  });
+
+  test('init applies localized action labels', () async {
+    await notifier.init(
+      config: const DraftModeNotifierConfig(
+        yesActionLabel: 'Oui',
+        noActionLabel: 'Non',
+      ),
+    );
+
+    final categories = initializationSettings?.iOS?.notificationCategories;
+    expect(categories, isNotNull);
+    final actions = categories!.single.actions;
+    expect(actions.first.title, 'Oui');
+    expect(actions.last.title, 'Non');
+  });
+
+  test('showActionNotification reuses localized action labels', () async {
+    await notifier.init(
+      config: const DraftModeNotifierConfig(
+        yesActionLabel: 'Si',
+        noActionLabel: 'Nope',
+      ),
+    );
+
+    await notifier.showActionNotification(
+      id: 7,
+      title: 'title',
+      body: 'body',
+    );
+
+    final details = verify(() => plugin.show(
+          any(),
+          any(),
+          any(),
+          captureAny(),
+          payload: any(named: 'payload'),
+        )).captured.single as NotificationDetails;
+    final actions = details.android?.actions;
+    expect(actions, isNotNull);
+    expect(actions!.first.title, 'Si');
+    expect(actions.last.title, 'Nope');
   });
 
   test('showActionNotification forwards provided payload', () async {
@@ -164,6 +212,22 @@ void main() {
           payload: captureAny(named: 'payload'),
         )).captured;
     expect(captured.single, 'open_path');
+  });
+
+  test('showActionNotification auto-generates ids when omitted', () async {
+    await notifier.showActionNotification(
+      title: 'title',
+      body: 'body',
+    );
+
+    final captured = verify(() => plugin.show(
+          captureAny(),
+          any(),
+          any(),
+          any(),
+          payload: any(named: 'payload'),
+        )).captured;
+    expect(captured.first, greaterThan(0));
   });
 
   test('cancel normalizes ids', () async {
@@ -207,6 +271,30 @@ void main() {
 
     await Future<void>.delayed(Duration.zero);
     expect(called, 1);
+  });
+
+  test('multiple buffered taps replay after handler registration', () async {
+    await notifier.init();
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+      payload: 'dialog',
+    ));
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+      payload: 'dialog',
+    ));
+
+    var called = 0;
+    notifier.registerNotificationConsumer(
+      payload: 'dialog',
+      handler: (_) async {
+        called++;
+      },
+    );
+
+    await Future<void>.delayed(Duration.zero);
+    expect(called, 2);
   });
 
   test('NO action tap is ignored', () async {
@@ -291,6 +379,30 @@ void main() {
 
     await Future<void>.delayed(Duration.zero);
     expect(openCalled, 1);
+  });
+
+  test('registerNotificationConsumer replaces the existing handler', () async {
+    await notifier.init();
+    var firstCalled = 0;
+    var secondCalled = 0;
+    _registerConfirmConsumer(notifier, () {
+      firstCalled++;
+    });
+    notifier.registerNotificationConsumer(
+      payload: DraftModeNotifier.confirmPayload,
+      triggerFilter: DraftModeNotifier.isConfirmResponse,
+      handler: (_) async {
+        secondCalled++;
+      },
+    );
+
+    onForegroundResponse!(const NotificationResponse(
+      notificationResponseType: NotificationResponseType.selectedNotification,
+    ));
+
+    await Future<void>.delayed(Duration.zero);
+    expect(firstCalled, 0);
+    expect(secondCalled, 1);
   });
 
   test('notificationTapBackground delegates to singleton instance', () async {

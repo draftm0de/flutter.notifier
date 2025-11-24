@@ -1,4 +1,3 @@
-
 import 'package:draftmode_notifier/flutter/notification.dart';
 
 /// Provides payload and action context for a tapped local notification.

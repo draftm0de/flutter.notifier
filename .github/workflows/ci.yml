@@ -1,0 +1,10 @@
+name: Flutter CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  draftmode-flutter-ci:
+    uses: draftm0de/github.workflows/.github/workflows/flutter-ci.yml@main
+    secrets: inherit

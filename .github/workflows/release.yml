@@ -1,0 +1,13 @@
+name: Release Tagging
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  draftmode-flutter-release:
+    uses: draftm0de/github.workflows/.github/workflows/flutter-release.yml@main
+    secrets: inherit

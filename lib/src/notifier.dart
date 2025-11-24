@@ -2,19 +2,26 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 //
 import '../flutter/notification.dart';
+import 'config.dart';
 import 'response.dart';
 
 const int _kMaxNotificationId = 0x7fffffff;
 
 /// Coordinates local notification set up and tap handling for DraftMode apps.
 class DraftModeNotifier {
-  DraftModeNotifier._({FlutterLocalNotificationsPlugin? plugin})
-      : _fln = plugin ?? FlutterLocalNotificationsPlugin();
+  DraftModeNotifier._({
+    FlutterLocalNotificationsPlugin? plugin,
+    DraftModeNotifierConfig? config,
+  })  : _fln = plugin ?? FlutterLocalNotificationsPlugin(),
+        _config = config ?? const DraftModeNotifierConfig();
 
   /// Creates a notifier that wraps a custom notifications plugin (used in tests).
   @visibleForTesting
-  factory DraftModeNotifier.test(FlutterLocalNotificationsPlugin plugin) {
-    return DraftModeNotifier._(plugin: plugin);
+  factory DraftModeNotifier.test(
+    FlutterLocalNotificationsPlugin plugin, {
+    DraftModeNotifierConfig? config,
+  }) {
+    return DraftModeNotifier._(plugin: plugin, config: config);
   }
 
   static DraftModeNotifier? _instance;
@@ -31,6 +38,7 @@ class DraftModeNotifier {
   }
 
   final FlutterLocalNotificationsPlugin _fln;
+  DraftModeNotifierConfig _config;
   static const _channelId = 'confirm_channel';
   static const _iosCategoryId = 'CONFIRM_LEAVE';
   static const _confirmPayload = 'confirm';
@@ -42,7 +50,10 @@ class DraftModeNotifier {
   bool _isInitialized = false;
 
   /// Sets up categories, permissions, and the Android channel exactly once.
-  Future<void> init() async {
+  Future<void> init({DraftModeNotifierConfig? config}) async {
+    if (config != null) {
+      _config = config;
+    }
     if (_isInitialized) {
       return;
     }
@@ -55,12 +66,12 @@ class DraftModeNotifier {
           actions: <DarwinNotificationAction>[
             DarwinNotificationAction.plain(
               'YES',
-              'Yes',
+              _config.yesActionLabel,
               options: const {DarwinNotificationActionOption.foreground},
             ),
             DarwinNotificationAction.plain(
               'NO',
-              'No',
+              _config.noActionLabel,
               options: {DarwinNotificationActionOption.foreground},
             ),
           ],
@@ -103,7 +114,6 @@ class DraftModeNotifier {
     bool Function(DraftModeNotificationResponse response)? triggerFilter,
   }) {
     final normalized = _normalizePayload(payload);
-    debugPrint("registerNotificationConsumer: $normalized");
     _consumers[normalized] =
         _NotificationConsumer(handler: handler, filter: triggerFilter);
     _replayPendingResponses(normalized);
@@ -127,15 +137,22 @@ class DraftModeNotifier {
     await _dispatchNotification(wrapped);
   }
 
+  /// Generates the timestamp-based id used when callers omit [id].
+  int get normalizedKey => DateTime.now().millisecondsSinceEpoch;
+
   /// Posts an actionable alert with native Yes/No buttons.
+  ///
+  /// When [id] is omitted, the notifier assigns a timestamp-based identifier so
+  /// apps can fire-and-forget notifications without tracking ids manually.
   Future<void> showActionNotification({
-    required int id,
     required String title,
     required String body,
     String? subtitle,
     String? payload,
+    int? id,
   }) async {
-    final safeId = _normalizeNotificationId(id);
+    final useId = id ?? normalizedKey;
+    final safeId = _normalizeNotificationId(useId);
     final android = AndroidNotificationDetails(
       _channelId,
       'Confirmations',
@@ -143,16 +160,16 @@ class DraftModeNotifier {
       channelDescription: 'Actionable confirmations',
       importance: Importance.high,
       priority: Priority.high,
-      actions: const [
+      actions: [
         AndroidNotificationAction(
           'YES',
-          'Yes',
+          _config.yesActionLabel,
           showsUserInterface: true,
           cancelNotification: true,
         ),
         AndroidNotificationAction(
           'NO',
-          'No',
+          _config.noActionLabel,
           showsUserInterface: true,
           cancelNotification: true,
         ),
@@ -225,10 +242,8 @@ extension on DraftModeNotifier {
   Future<void> _dispatchNotification(
       DraftModeNotificationResponse response) async {
     final normalized = _normalizePayload(response.payload);
-    debugPrint("_dispatchNotification:$normalized");
     final consumer = _consumers[normalized];
     if (consumer == null) {
-      debugPrint("_dispatchNotification:no consumer");
       _pendingResponses.putIfAbsent(response.payload, () => []).add(response);
       return;
     }
@@ -237,7 +252,6 @@ extension on DraftModeNotifier {
       return;
     }
     if (consumer.handler != null) {
-      debugPrint("_dispatchNotification:handle:${response.payload}");
       await consumer.handler!(response);
     }
   }
