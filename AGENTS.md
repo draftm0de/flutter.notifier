@@ -10,7 +10,7 @@ Source code lives in `lib/`, and each feature should keep its screens, widgets, 
 - `bash flutter.update.sh` performs a clean build, regenerates localizations when `l10n.yaml` exists, and upgrades packages to their latest compatible major releases.
 
 ## Coding Style & Naming Conventions
-Use the Flutter 3.35 toolchain defined in `pubspec.yaml`. Format every Dart file with `dart format .`, and gate commits with `flutter analyze` to catch lint issues. Keep files and directories in lower_snake_case, classes in PascalCase, and non-public members in lowerCamelCase with a leading underscore for privacy. Widgets should remain small and composable; move cascading layouts into helper widgets under `lib/widgets/` when they exceed ~150 lines.
+Use the Flutter 3.35 toolchain defined in `pubspec.yaml`. **Always run `dart format .` before submitting or rerunning coverage** to keep diffs clean and avoid stale LCOV data. Gate commits with `flutter analyze` to catch lint issues. Keep files and directories in lower_snake_case, classes in PascalCase, and non-public members in lowerCamelCase with a leading underscore for privacy. Widgets should remain small and composable; move cascading layouts into helper widgets under `lib/widgets/` when they exceed ~150 lines.
 
 ## Testing Guidelines
 Adopt `flutter_test` with `group` and `testWidgets` for UI; name files `*_test.dart` to keep the runner discoverable. Each feature branch must add or adjust tests alongside code changes, targeting the same directory layout as production code. Favor golden tests for static visuals and mocked services for async flows. Block merges when `flutter test` fails or reports coverage regression on critical modules (navigation, localization, or shared services).
