@@ -45,4 +45,20 @@ void main() {
     );
     expect(wrapped.actionId, 'NO');
   });
+
+  test('synthetic factory builds manual responses', () {
+    final response = DraftModeNotificationResponse.synthetic(
+      payload: 'inbox',
+      notificationResponseType:
+          DraftModeNotificationResponseType.selectedNotification,
+      actionId: 'OPEN',
+      notificationId: 42,
+    );
+
+    expect(response.payload, 'inbox');
+    expect(response.actionId, 'OPEN');
+    expect(response.notificationId, 42);
+    expect(response.notificationResponseType,
+        DraftModeNotificationResponseType.selectedNotification);
+  });
 }

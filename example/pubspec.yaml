@@ -12,11 +12,13 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  intl: ^0.20.2
 
   draftmode_notifier:
     path: ../
 
   draftmode_ui:
+#    path: ../../ui
     git: https://github.com/draftm0de/flutter.ui
     version: ^1.0.0
 

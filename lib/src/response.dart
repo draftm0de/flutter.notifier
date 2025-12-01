@@ -25,6 +25,22 @@ class DraftModeNotificationResponse {
     );
   }
 
+  /// Creates a synthesized response used for programmatic triggers such as
+  /// tapping an inbox entry.
+  factory DraftModeNotificationResponse.synthetic({
+    required String payload,
+    required DraftModeNotificationResponseType notificationResponseType,
+    String? actionId,
+    int? notificationId,
+  }) {
+    return DraftModeNotificationResponse._(
+      payload: payload,
+      notificationResponseType: notificationResponseType,
+      actionId: actionId,
+      notificationId: notificationId,
+    );
+  }
+
   /// Normalized payload string DraftModeNotifier uses for routing.
   final String payload;
 
