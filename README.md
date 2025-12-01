@@ -53,18 +53,51 @@ Future<void> pushReminder() {
 
 DraftMode Notifier tracks every alert fired through `pushNotification` in a `DraftModeNotificationItem` that records the payload, title, body, subtitle, and timestamp. Listen to `pendingNotificationCountListenable` in badges or page chrome, then render `pendingNotificationsListenable` inside a `ListView` (see `example/lib/screen/inbox.dart`). Calling `DraftModeNotifier.instance.triggerPendingNotification(item.id)` in response to a tap replays the exact consumer registered for that payload and automatically removes the item from both listenables.
 
-### Foreground dialogs & sample geofence workflow
+```dart
+class InboxBadge extends StatelessWidget {
+  const InboxBadge({super.key});
 
-Apps that need a visual confirmation when a notification is tapped can wrap an existing dialog presenter in `XDraftModeNotifierDialog`. The helper bridges the legacy `tite` argument (kept for backward compatibility) to the modern `title/message` pair so existing callbacks continue to work while newer widgets adopt the `DraftModeNotifierShowDialog` contract.
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable:
+          DraftModeNotifier.instance.pendingNotificationCountListenable,
+      builder: (context, count, _) {
+        return DraftModePageNavigationBottomItem(text: '$count');
+      },
+    );
+  }
+}
 
-The included example under `example/` wires those pieces together for a kiosk-style geofence helper:
+class InboxList extends StatelessWidget {
+  const InboxList({super.key});
 
-1. `GeofenceNotifier` registers two payloads (`DraftModeGeofenceMode.enter/exit`).
-2. Each handler invokes `DraftModeUIDialog.show` with copy that matches the geofence intent so operators see the context immediately.
-3. `pushNotification` is reused for both payloads, with the payload string controlling which dialog runs when the notification is tapped.
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<List<DraftModeNotificationItem>>(
+      valueListenable:
+          DraftModeNotifier.instance.pendingNotificationsListenable,
+      builder: (context, items, _) {
+        return DraftModeUIList<DraftModeNotificationItem>(
+          items: items,
+          itemBuilder: (item, selected) => Text(item.title),
+          onTap: (item) => DraftModeNotifier.instance
+              .triggerPendingNotification(item.id),
+        );
+      },
+    );
+  }
+}
+```
 
-## Example app
-The sample under `example/` now also includes an **Inbox** tab that mirrors `pendingNotificationsListenable`. Each entry shows the notification title, subtitle, body, and creation time; tapping an entry triggers the same consumer that would run if the native notification were tapped.
+### Example app
+
+The sample under `example/` shows how to:
+
+1. Register multiple consumers (ENTER/EXIT) with their own dialog callbacks.
+2. Post notifications from form inputs with immediate send or delayed send.
+3. Display the current pending count in the navigation bar, and open an **Inbox** modal that renders `pendingNotificationsListenable` via `DraftModeUIList` (see `example/lib/screen/inbox.dart`).
+4. Replay pending notifications by tapping inbox entries, which calls `triggerPendingNotification` to run the same handler as a native tap.
 
 ## Development workflow
 
