@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 //
 import '../flutter/notification.dart';
 import 'config.dart';
 import 'response.dart';
+import 'item.dart';
 
 const int _kMaxNotificationId = 0x7fffffff;
 
@@ -47,7 +48,28 @@ class DraftModeNotifier {
   static const confirmPayload = _confirmPayload;
   final Map<String, _NotificationConsumer> _consumers = {};
   final Map<String, List<DraftModeNotificationResponse>> _pendingResponses = {};
+  final Map<int, DraftModeNotificationItem> _activeNotifications = {};
+  final ValueNotifier<int> _pendingNotificationCount = ValueNotifier<int>(0);
+  final ValueNotifier<List<DraftModeNotificationItem>> _pendingNotifications =
+      ValueNotifier<List<DraftModeNotificationItem>>(const []);
   bool _isInitialized = false;
+
+  /// Listen for the number of notifications that have been issued but not
+  /// responded to or cancelled yet.
+  ValueListenable<int> get pendingNotificationCountListenable =>
+      _pendingNotificationCount;
+
+  /// Synchronously reads the current pending notification total.
+  int get pendingNotificationCount => _pendingNotificationCount.value;
+
+  /// Listen for the collection of pending notifications, including metadata
+  /// needed for inbox displays.
+  ValueListenable<List<DraftModeNotificationItem>>
+      get pendingNotificationsListenable => _pendingNotifications;
+
+  /// Synchronously reads the current pending notification list.
+  List<DraftModeNotificationItem> get pendingNotifications =>
+      _pendingNotifications.value;
 
   /// Sets up categories, permissions, and the Android channel exactly once.
   Future<void> init({DraftModeNotifierConfig? config}) async {
@@ -129,6 +151,7 @@ class DraftModeNotifier {
   }
 
   Future<void> _handleNotificationResponse(NotificationResponse resp) async {
+    _resolvePendingNotification(resp.id);
     final payload = _normalizePayload(resp.payload);
     final wrapped = DraftModeNotificationResponse.fromPlugin(
       normalizedPayload: payload,
@@ -180,17 +203,51 @@ class DraftModeNotifier {
       subtitle: subtitle,
     );
 
+    final normalizedPayload = _normalizePayload(payload);
     await _fln.show(
       safeId,
       title,
       body,
       NotificationDetails(android: android, iOS: ios),
-      payload: _normalizePayload(payload),
+      payload: normalizedPayload,
     );
+    final item = DraftModeNotificationItem(
+        id: safeId,
+        title: title,
+        subtitle: subtitle,
+        body: body,
+        payload: normalizedPayload);
+    _trackPendingNotification(item);
   }
 
   /// Cancels a notification, normalizing the id to stay within Android limits.
-  Future<void> cancel(int id) => _fln.cancel(_normalizeNotificationId(id));
+  Future<void> cancel(int id) {
+    final safeId = _normalizeNotificationId(id);
+    _resolvePendingNotification(safeId);
+    return _fln.cancel(safeId);
+  }
+
+  /// Invokes the registered consumer for a pending notification as if it were
+  /// tapped from the system tray.
+  Future<void> triggerPendingNotification(int id) async {
+    final pending = _activeNotifications[id];
+    if (pending == null) {
+      return;
+    }
+    final payload = _normalizePayload(pending.payload);
+    final consumer = _consumers[payload];
+    if (consumer == null) {
+      return;
+    }
+    final response = DraftModeNotificationResponse.synthetic(
+      payload: payload,
+      notificationResponseType:
+          DraftModeNotificationResponseType.selectedNotification,
+      notificationId: pending.id,
+    );
+    await _dispatchNotification(response);
+    _resolvePendingNotification(id);
+  }
 
   /// Default filter that accepts taps from the notification body or YES action.
   static bool isConfirmResponse(DraftModeNotificationResponse resp) {
@@ -201,6 +258,27 @@ class DraftModeNotifier {
         type == DraftModeNotificationResponseType.selectedNotificationAction &&
             resp.actionId == 'YES';
     return fromNotification || isYesAction;
+  }
+
+  void _trackPendingNotification(DraftModeNotificationItem item) {
+    final int id = item.id;
+    _activeNotifications[id] = item;
+    _syncPendingNotificationState();
+  }
+
+  void _resolvePendingNotification(int? id) {
+    if (id == null) {
+      return;
+    }
+    if (_activeNotifications.remove(id) != null) {
+      _syncPendingNotificationState();
+    }
+  }
+
+  void _syncPendingNotificationState() {
+    _pendingNotificationCount.value = _activeNotifications.length;
+    _pendingNotifications.value =
+        List.unmodifiable(_activeNotifications.values.toList());
   }
 }
 

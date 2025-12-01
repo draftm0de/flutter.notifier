@@ -405,6 +405,59 @@ void main() {
     expect(secondCalled, 1);
   });
 
+  test('pending notifications update listenables when tracked and cleared',
+      () async {
+    final emissions = <int>[];
+    void listener() => emissions.add(notifier.pendingNotificationCount);
+    notifier.pendingNotificationCountListenable.addListener(listener);
+
+    await notifier.pushNotification(
+      id: 5,
+      title: 'Reminder',
+      subtitle: 'Soon',
+      body: 'Body',
+      payload: 'payload',
+    );
+
+    expect(notifier.pendingNotificationCount, 1);
+    final pending = notifier.pendingNotifications.single;
+    expect(pending.title, 'Reminder');
+    expect(pending.subtitle, 'Soon');
+    expect(pending.payload, 'payload');
+
+    await notifier.cancel(5);
+
+    expect(notifier.pendingNotificationCount, 0);
+    notifier.pendingNotificationCountListenable.removeListener(listener);
+    expect(emissions, [1, 0]);
+  });
+
+  test('triggerPendingNotification dispatches handler and removes entry',
+      () async {
+    await notifier.init();
+    var called = 0;
+    notifier.registerConsumer(
+      payload: 'payload',
+      handler: (_) async {
+        called++;
+      },
+    );
+
+    await notifier.pushNotification(
+      id: 9,
+      title: 'Reminder',
+      body: 'Body',
+      payload: 'payload',
+    );
+
+    expect(notifier.pendingNotificationCount, 1);
+
+    await notifier.triggerPendingNotification(9);
+
+    expect(called, 1);
+    expect(notifier.pendingNotificationCount, 0);
+  });
+
   test('notificationTapBackground delegates to singleton instance', () async {
     DraftModeNotifier.debugResetInstance(notifier);
     await notifier.init();

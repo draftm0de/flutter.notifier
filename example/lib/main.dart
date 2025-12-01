@@ -13,8 +13,12 @@ Future<void> main() async {
   DraftModeUIContext.init(navigatorKey: _navigatorKey);
   await DraftModeNotifier.instance.init();
   DraftModeNotifier.instance.registerConsumer(
-    payload: Notifier.notifierKey,
-    handler: Notifier().handleEnterTap,
+    payload: Notifier.notifierKeyEnter,
+    handler: Notifier().handleEnter,
+  );
+  DraftModeNotifier.instance.registerConsumer(
+    payload: Notifier.notifierKeyExit,
+    handler: Notifier().handleExit,
   );
   runApp(App(navigatorKey: _navigatorKey));
 }
